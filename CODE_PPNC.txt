@@ -1,0 +1,227 @@
+# Final report - HKDT2 2024-2025
+
+# Research method in Finance - B03021 - Student group 3
+
+## TOPIC: DETERMINANTS OF FIRM VALUE:
+#AN EMPIRICAL ANALYSIS OF LISTED TRADING COMPANIES IN THE VIETNAMESE MARKET.
+
+#======================================================================================
+
+install.packages('plm')    #to run regression models(REM,FEM) and panel data analysis
+install.packages('sandwich') #to compute standard errors (heteroskedasticity-consistent)
+install.packages('tidyverse') # to manipulate the data
+install.packages('dplyr')  # to extract and summarize data
+install.packages('car') # to test multicollinearity
+
+require('plm')
+require('sandwich')
+require('lmtest')
+require('tidyverse')
+require('dplyr')
+require('car')
+
+setwd("D:/BCCK N3")
+#======================================================================================
+
+
+#Regression Model 
+# VAL = β0 + β1 × SIZE + β2 × CS + β3 × ROE + β4 × LIQUIDITY + u
+
+#Where:
+# VAL -> Firm Value
+# SIZE -> Firm size
+# CS -> Capital structure
+# ROE -> Profitability
+# LIQUIDITY -> Liquidity
+# u -> Error term
+# β0 -> Intercept perameter
+# β1, β2, β3, β4, β5 ->  Slope perameters
+#======================================================================================
+
+# Load data
+data <- read.csv("D:/BCCK N3/DATA.csv", header = T, sep = ',', na.strings = c("NA",'-'))
+# Filtering the data (Removing rows that have NA)
+library('dplyr')
+data <- data %>% filter (!is.na(VAL), !is.na(SIZE), !is.na(CS), !is.na(ROE), !is.na(LIQUIDITY)) 
+
+# Cleaning the data 
+data$FIRM <- trimws(data$FIRM)
+data$YEAR <- trimws(data$YEAR)
+data$SIZE <- trimws(data$SIZE)
+data$FIRM <- as.factor(data$FIRM)
+data$YEAR <- as.factor(data$YEAR)
+
+# Clean and convert to numeric
+data$VAL <- as.numeric(trimws(data$VAL))
+data$SIZE <- as.numeric(trimws(data$SIZE))
+data$CS <- as.numeric(trimws(data$CS))
+data$ROE <- as.numeric(trimws(data$ROE))
+data$LIQUIDITY<- as.numeric(trimws(data$LIQUIDITY))
+
+str(data)
+summary(data[,c(3:7)])
+#VAL             SIZE             CS         
+#Min.   :23.06   Min.   :22.95   Min.   :-6.7522  
+#1st Qu.:23.92   1st Qu.:24.84   1st Qu.: 0.3372  
+#Median :24.95   Median :25.63   Median : 0.6451  
+#Mean   :25.13   Mean   :25.96   Mean   : 1.0594  
+#3rd Qu.:25.99   3rd Qu.:26.75   3rd Qu.: 1.5224  
+#Max.   :30.55   Max.   :31.38   Max.   :19.4951  
+#NA's   :21      NA's   :5       NA's   :9        
+#    ROE             LIQUIDITY       
+# Min.   :-1.34641   Min.   : 0.04653  
+#1st Qu.: 0.07623   1st Qu.: 0.32457  
+#Median : 0.12983   Median : 0.53635  
+#Mean   : 0.13445   Mean   : 0.76356  
+#3rd Qu.: 0.18476   3rd Qu.: 0.79452  
+#Max.   : 2.06486   Max.   :29.32819  
+#NA's   :11         NA's   :9         
+
+#======================================================================================
+
+install.packages('psych') # for descriptive statistics
+require('psych')
+desc_stats <- describe(data[,c(3:7)])
+
+# Calculating standard deviation
+sd(data$VAL, na.rm = TRUE)
+sd(data$SIZE, na.rm = TRUE)
+sd(data$CS,na.rm = TRUE)
+sd(data$ROE,na.rm = TRUE)
+sd(data$LIQUIDITY,na.rm = TRUE)
+#======================================================================================
+
+# Correlation coefficients
+data1<- data[,c(3:7)]
+#Ommiting NA
+data1 <- na.omit(data[, c("VAL", "SIZE", "CS", "ROE", "LIQUIDITY")])
+cor(data1)
+
+#VAL      SIZE          CS         ROE  LIQUIDITY
+#VAL       1.00000000 0.8324585  0.22037032  0.07890463  0.1213335
+#SIZE      0.83245855 1.0000000  0.37314676  0.25283527  0.2924623
+#CS        0.22037032 0.3731468  1.00000000 -0.03914304  0.6162906
+#ROE       0.07890463 0.2528353 -0.03914304  1.00000000 -0.1147857
+#LIQUIDITY 0.12133349 0.2924623  0.61629062 -0.11478565  1.0000000
+
+#======================================================================================
+# Test multicollinearity
+library(car)
+vif(lm(VAL ~ SIZE + CS + ROE + LIQUIDITY , data = data1))
+#  SIZE        CS       ROE LIQUIDITY 
+#1.287298  1.728408  1.116457  1.659997 
+#=======================================================================================
+E# Regression analysis
+# Estimating Fixed effects panel data model
+reg_FEM <- plm(VAL ~ SIZE + CS + ROE + LIQUIDITY, model = 'within',data= data, index = c('FIRM','YEAR'))
+summary(reg_FEM)
+
+#Call:
+#plm(formula = VAL ~ SIZE + CS + ROE + LIQUIDITY, data = data, model = "within", index = c("FIRM", "YEAR"))
+
+#Unbalanced Panel: n = 46, T = 8-20, N = 510
+
+#Residuals:
+#   Min.     1st Qu.      Median     3rd Qu.        Max. 
+#-1.04659175 -0.09943906  0.00047988  0.08839855  2.21577355 
+#Coefficients:
+#          Estimate Std. Error t-value  Pr(>|t|)    
+#SIZE       0.500465   0.026608 18.8089 < 2.2e-16 ***
+#CS        -0.097612   0.014517 -6.7241 5.501e-11 ***
+#ROE       -1.144780   0.124520 -9.1936 < 2.2e-16 ***
+#LIQUIDITY -0.165909   0.063521 -2.6119  0.009313 ** 
+---
+  #Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+  
+  #Total Sum of Squares:    73.195
+  #Residual Sum of Squares: 35.133
+  #R-Squared:      0.52001
+  #Adj. R-Squared: 0.46983
+  #F-statistic: 119.173 on 4 and 440 DF, p-value: < 2.22e-16
+  #===================================================================================
+# Estimating Random effects panel data model
+library(plm)
+reg_REM <- plm(VAL ~ SIZE + CS + ROE + LIQUIDITY, model = 'r',data= data, index = c('FIRM','YEAR'))
+summary(reg_REM)
+#Oneway (individual) effect Random Effect Model (Swamy-Arora's transformation)
+
+#Call:
+#plm(formula = VAL ~ SIZE + CS + ROE + LIQUIDITY, data = data, model = "r", index = c("FIRM", "YEAR"))
+
+#Unbalanced Panel: n = 46, T = 8-20, N = 510
+
+#Effects:
+#                 var std.dev share
+#idiosyncratic 0.07985 0.28257 0.148
+#individual    0.45889 0.67742 0.852
+#theta:
+#  Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#0.7171  0.8828  0.8851  0.8787  0.8851  0.8892 
+
+#Residuals:
+#    Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
+#-0.841051 -0.138158 -0.027495  0.000892  0.095832  2.213456 
+
+#Coefficients:
+#            Estimate Std. Error z-value  Pr(>|z|)    
+#(Intercept) 11.366771   0.668749 16.9971 < 2.2e-16 ***
+#SIZE         0.543311   0.025595 21.2273 < 2.2e-16 ***
+#CS          -0.094383   0.014788 -6.3824 1.744e-10 ***
+#ROE         -1.169517   0.125958 -9.2850 < 2.2e-16 ***
+#LIQUIDITY   -0.171293   0.064264 -2.6655  0.007688 ** 
+---
+  #Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+  
+  #Total Sum of Squares:    192.31
+  #Residual Sum of Squares: 40.276
+  #R-Squared:      0.79063
+  #Adj. R-Squared: 0.78889
+  #Chisq: 554.092 on 4 DF, p-value: < 2.22e-16
+  #======================================================================================
+
+#Hausman Test
+#H0 : Random effects model (REM) is appropiate, no correaltion 
+#H1 : Fixed effects panel data model(FEM) is appropiate, correaltion 
+hausman_test <- phtest(reg_FEM, reg_REM)
+print(hausman_test)
+
+#Hausman Test
+#data:  VAL ~ SIZE + CS + ROE + LIQUIDITY
+#chisq = 28.503, df = 4, p-value = 9.862e-06 = 0.000009862 < 5%
+#alternative hypothesis: one model is inconsistent
+# Reject H0 and accept H1.
+# Fixed effects model is more appropiate.
+#======================================================================================
+install.packages('stargazer') 
+require('stargazer')
+stargazer(reg_FEM, reg_REM, type='text',column.labels = c('FEM', 'REM'))
+
+# Dependent variable:        
+#            -----------------------------------
+#                           VAL                
+#                       FEM               REM    
+#                      (1)               (2)    
+#-----------------------------------------------
+#SIZE                 0.500***          0.543*** 
+#                    (0.027)           (0.026)  
+                                                
+#CS                  -0.098***         -0.094*** 
+#                     (0.015)           (0.015)  
+                                                
+#ROE                 -1.145***         -1.170*** 
+#                     (0.125)           (0.126)  
+                                                
+#LIQUIDITY           -0.166***         -0.171*** 
+#                     (0.064)           (0.064)  
+                                                
+#Constant                              11.367*** 
+#                                       (0.669)  
+
+#------------------------------------------------
+#Observations           510               510    
+#R2                    0.520             0.791   
+#Adjusted R2           0.470             0.789   
+#F Statistic  119.173*** (df = 4; 440) 554.092***
+#================================================
+#Note:                *p<0.1; **p<0.05; ***p<0.01
+                                                
